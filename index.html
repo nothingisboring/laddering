@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LADDERS | Daily Ranking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style id="dynamic-theme">
+        /* Default Styles (NYT Style) */
+        :root { --bg: #ffffff; --text: #000000; --accent: #000000; --item-bg: #ffffff; --bar: #e2e2e2; }
+        body { font-family: 'Helvetica Neue', Arial; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; transition: 0.5s; }
+        header { width: 100%; max-width: 500px; border-bottom: 1px solid #ddd; padding: 10px 0; display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .logo { font-weight: 900; font-size: 24px; }
+        
+        #sortable-list { list-style: none; padding: 0; width: 100%; max-width: 450px; }
+        .item { 
+            display: flex; align-items: center; padding: 15px; background: var(--item-bg); 
+            border: 1px solid #ddd; margin-bottom: 5px; position: relative; cursor: grab;
+        }
+        .data-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--bar); transition: width 1s; z-index: 1; opacity: 0.4; }
+        .text-container { position: relative; z-index: 2; display: flex; width: 100%; align-items: center; font-weight: bold; }
+        
+        .peek-btn { margin-left: auto; font-size: 10px; padding: 4px 8px; cursor: pointer; background: var(--accent); color: white; border: none; }
+        .val-hint { margin-left: auto; font-size: 12px; display: none; background: #000; color: #fff; padding: 2px 5px; }
+
+        .controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 450px; }
+        button.main-btn { padding: 15px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer; }
+        #submitBtn { background: var(--accent); color: white; }
+        #masterBtn { background: transparent; border: 2px solid var(--accent); color: var(--accent); display: none; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">LADDERS</div>
+        <div style="text-align:right; font-size:10px;">PEEKS: <span id="peek-count">3</span></div>
+    </header>
+
+    <div style="text-align:center; margin-bottom:20px;">
+        <h2 id="puzzle-title"></h2>
+        <p id="puzzle-desc" style="font-size:14px; opacity:0.7;"></p>
+    </div>
+
+    <ul id="sortable-list"></ul>
+
+    <div class="controls">
+        <button id="submitBtn" class="main-btn" onclick="checkLadders()">SUBMIT RANKING</button>
+        <button id="masterBtn" class="main-btn" onclick="showMaster()">VIEW CORRECT ORDER</button>
+    </div>
+
+    <script>
+        const vault = [
+            { 
+                title: "Red Spectrum", 
+                desc: "Lightest ➔ Darkest",
+                // CUSTOM STYLE FOR THIS PUZZLE
+                style: { bg: "#1a0505", text: "#ffcccc", accent: "#8b0000", item: "#2d0a0a", bar: "#ff0000" },
+                items: [
+                    {n: "Misty Rose", r: 1, v: 10, h: "#FFE4E1"}, {n: "Salmon", r: 2, v: 20, h: "#FA8072"},
+                    {n: "Crimson", r: 6, v: 60, h: "#DC143C"}, {n: "Oxblood", r: 10, v: 100, h: "#4A0404"}
+                    // Add the rest of your red items here...
+                ]
+            },
+            { 
+                title: "Artistic Abstraction", 
+                desc: "Figurative ➔ Non-Objective",
+                style: { bg: "#f0f0f0", text: "#000", accent: "#ff0000", item: "#fff", bar: "#0000ff" },
+                items: [
+                    {n: "Monet", r: 1, v: 10, h: "Impressionism"}, {n: "Pollock", r: 7, v: 70, h: "Drip Art"},
+                    {n: "Mondrian", r: 10, v: 100, h: "Pure Grid"}
+                ]
+            }
+        ];
+
+        let peeksLeft = 3;
+        const launchDate = new Date("2026-01-18");
+        const diffDays = Math.floor((new Date() - launchDate) / 86400000);
+        const activePuzzle = vault[diffDays % vault.length];
+
+        function init() {
+            // Apply Dynamic Theme
+            if(activePuzzle.style) {
+                const s = activePuzzle.style;
+                document.documentElement.style.setProperty('--bg', s.bg);
+                document.documentElement.style.setProperty('--text', s.text);
+                document.documentElement.style.setProperty('--accent', s.accent);
+                document.documentElement.style.setProperty('--item-bg', s.item);
+                document.documentElement.style.setProperty('--bar', s.bar);
+            }
+
+            document.getElementById('puzzle-title').innerText = activePuzzle.title;
+            document.getElementById('puzzle-desc').innerText = activePuzzle.desc;
+            
+            const list = document.getElementById('sortable-list');
+            [...activePuzzle.items].sort(() => Math.random() - 0.5).forEach(item => {
+                list.innerHTML += `
+                    <li class="item" draggable="true" data-rank="${item.r}" data-val="${item.v}">
+                        <div class="data-bar"></div>
+                        <div class="text-container">
+                            <span class="name">${item.n}</span>
+                            <span class="val-hint">${item.h || ''}</span>
+                            <button class="peek-btn" onclick="peek(this)">PEEK</button>
+                        </div>
+                    </li>`;
+            });
+            setupDraggables();
+        }
+
+        function peek(btn) {
+            if (peeksLeft > 0) {
+                const hint = btn.previousElementSibling;
+                hint.style.display = 'block';
+                peeksLeft--;
+                document.getElementById('peek-count').innerText = peeksLeft;
+                btn.style.display = 'none';
+                setTimeout(() => {
+                    if (!document.getElementById('submitBtn').disabled) {
+                        hint.style.display = 'none';
+                        btn.style.display = 'block';
+                    }
+                }, 2000);
+            }
+        }
+
+        function checkLadders() {
+            const items = [...document.querySelectorAll('.item')];
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('masterBtn').style.display = 'block';
+            
+            items.forEach((item, idx) => {
+                const isCorrect = item.dataset.rank == (idx + 1);
+                item.querySelector('.data-bar').style.width = item.dataset.val + '%';
+                item.style.borderLeft = isCorrect ? '10px solid #6aaa64' : '10px solid #ce3a3a';
+                item.querySelector('.val-hint').style.display = 'block';
+                item.querySelector('.peek-btn').style.display = 'none';
+                item.draggable = false;
+            });
+        }
+
+        function showMaster() {
+            const list = document.getElementById('sortable-list');
+            const items = [...document.querySelectorAll('.item')].sort((a,b) => a.dataset.rank - b.dataset.rank);
+            list.innerHTML = '';
+            items.forEach(i => list.appendChild(i));
+        }
+
+        function setupDraggables() {
+            const list = document.getElementById('sortable-list');
+            let dragItem = null;
+            list.addEventListener('dragstart', (e) => { dragItem = e.target; e.target.classList.add('dragging'); });
+            list.addEventListener('dragend', (e) => { e.target.classList.remove('dragging'); });
+            list.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = [...list.querySelectorAll('.item:not(.dragging)')].reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = e.clientY - box.top - box.height / 2;
+                    return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+                if (afterElement == null) list.appendChild(dragItem);
+                else list.insertBefore(dragItem, afterElement);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
