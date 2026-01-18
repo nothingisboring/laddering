@@ -112,4 +112,77 @@
             [...active.items].sort(() => Math.random() - 0.5).forEach(item => {
                 list.innerHTML += `
                     <li class="item" draggable="true" data-rank="${item.r}">
-                        <div
+                        <div class="swatch-reveal" style="background:${item.c}"></div>
+                        <span class="name">${item.n}</span>
+                        <div class="peek-btn" onclick="peek(this)">PEEK</div>
+                    </li>`;
+            });
+            setupDraggables();
+        }
+
+        function peek(btn) {
+            if (peeksLeft > 0) {
+                const parent = btn.parentElement;
+                parent.classList.add('peeked');
+                peeksLeft--;
+                document.getElementById('peek-display').innerText = `Peeks remaining: ${peeksLeft}`;
+                btn.style.display = 'none';
+                setTimeout(() => { if(!document.getElementById('submitBtn').disabled) parent.classList.remove('peeked'); }, 1000);
+            }
+        }
+
+        function submit() {
+            const items = [...document.querySelectorAll('.item')];
+            let correct = 0;
+            items.forEach((item, idx) => {
+                item.classList.add('solved');
+                const isCorrect = item.dataset.rank == (idx + 1);
+                if(isCorrect) correct++;
+                item.style.borderColor = isCorrect ? '#6aaa64' : '#ff4d4d';
+                item.querySelector('.peek-btn').style.display = 'none';
+                item.draggable = false;
+            });
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('masterBtn').style.display = 'block';
+            updateStreak(correct === active.items.length);
+        }
+
+        function showMaster() {
+            const list = document.getElementById('sortable-list');
+            const items = [...document.querySelectorAll('.item')].sort((a,b) => a.dataset.rank - b.dataset.rank);
+            list.innerHTML = '';
+            items.forEach(i => list.appendChild(i));
+        }
+
+        function updateStreak(win) {
+            let streak = parseInt(localStorage.getItem('ladders_streak')) || 0;
+            const last = localStorage.getItem('ladders_last');
+            const today = new Date().toISOString().split('T')[0];
+            if(last !== today) {
+                streak = win ? streak + 1 : 0;
+                localStorage.setItem('ladders_streak', streak);
+                localStorage.setItem('ladders_last', today);
+                document.getElementById('streak-count').innerText = streak;
+            }
+        }
+
+        function setupDraggables() {
+            const list = document.getElementById('sortable-list');
+            let dragItem = null;
+            list.addEventListener('dragstart', (e) => { dragItem = e.target; e.target.classList.add('dragging'); });
+            list.addEventListener('dragend', (e) => { e.target.classList.remove('dragging'); });
+            list.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = [...list.querySelectorAll('.item:not(.dragging)')].reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = e.clientY - box.top - box.height / 2;
+                    return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+                if (afterElement == null) list.appendChild(dragItem);
+                else list.insertBefore(dragItem, afterElement);
+            });
+        }
+        init();
+    </script>
+</body>
+</html>
